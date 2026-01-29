@@ -1,6 +1,6 @@
 # 🚀 SDLC DevOps Project: Complete Node.js Pipeline
 
-A complete "Zero to Hero" DevOps project demonstrating a full Software Development Life Cycle (SDLC) pipeline. This project moves a simple Node.js application from local development to a production-ready deployment on AWS using industry-standard tools, now including full observability.
+A complete "Zero to Hero" DevOps project demonstrating a full Software Development Life Cycle (SDLC) pipeline. This project moves a simple Node.js application from local development to a production-ready deployment on AWS using industry-standard tools, now including full observability and GitOps.
 
 ## 📋 Project Overview
 
@@ -31,9 +31,16 @@ graph TD
         Minikube -.-> Prometheus
     end
 
+    subgraph Phase5[Phase 5: GitOps Delivery]
+        Config[Dev: Update YAML] -->|Commit| GitRepo[Git Repository]
+        ArgoCD[ArgoCD Controller] -->|Sync| GitRepo
+        ArgoCD -->|Deploy| Minikube
+    end
+
     Phase1 --> Phase2
     Phase2 --> Phase3
     Phase1 --> Phase4
+    Phase2 --> Phase5
 ```
 
 ---
@@ -45,6 +52,7 @@ graph TD
 * **Containerization**: Docker & Docker Hub
 * **Local Orchestration**: Minikube (Kubernetes)
 * **CI Pipeline**: Jenkins (running in Docker)
+* **CD Strategy**: GitOps via **ArgoCD**
 * **Infrastructure as Code**: Terraform (AWS Provider)
 * **Configuration Management**: Ansible
 * **Monitoring**: Prometheus (Metrics) & Grafana (Dashboards)
@@ -62,7 +70,7 @@ sdlc-devops-project/
 │   ├── server.js         # Node.js entry point (Instrumented)
 │   ├── package.json      # Dependencies
 │   └── Dockerfile        # Container definition
-├── k8s/                  # Kubernetes Manifests (Local)
+├── k8s/                  # Kubernetes Manifests (Watched by ArgoCD)
 │   ├── deployment.yaml   # App Deployment
 │   ├── service.yaml      # App Service
 │   └── service-monitor.yaml # Prometheus Monitor Config
@@ -234,6 +242,37 @@ kubectl get secret --namespace monitoring my-monitoring-grafana -o jsonpath="{.d
 * **URL:** `http://localhost:3000`
 * **User:** `admin`
 * **Query:** `rate(http_requests_total[1m])` to see requests per second.
+
+---
+
+## 🐙 Phase 5: GitOps Delivery (ArgoCD)
+
+**Goal:** Implement a Pull-based deployment strategy where the cluster automatically syncs with the Git repository.
+
+### 1. Install ArgoCD
+Deploy ArgoCD into the cluster.
+
+```bash
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+```
+
+### 2. Access the UI
+Since ArgoCD runs inside the cluster, port-forward the dashboard to localhost.
+
+```bash
+# Port forward to 8081 (to avoid conflict with Jenkins on 8080)
+kubectl port-forward svc/argocd-server -n argocd 8081:443
+```
+* **URL:** `https://localhost:8081`
+* **User:** `admin`
+* **Password:** `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d`
+
+### 3. The GitOps Workflow
+1.  **Code Change:** Developer commits new code to `app/`.
+2.  **CI Build:** Jenkins builds Docker image (e.g., `:v2`).
+3.  **Config Update:** Developer updates `k8s/deployment.yaml` image tag to `:v2` and commits.
+4.  **Auto-Sync:** ArgoCD detects the change in GitHub and automatically updates the Kubernetes deployment to match the state defined in Git.
 
 ---
 
