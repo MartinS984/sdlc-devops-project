@@ -23,7 +23,7 @@ register.registerMetric(httpRequestCounter);
 app.get('/', (req, res) => {
   // Increment the counter every time someone hits home
   httpRequestCounter.inc({ method: 'GET', route: '/', status: '200' });
-  res.send('Hello! Welcome to the DevOps Masterclass v2.0 (Monitored)');
+  res.send('Hello! Welcome to the GitOps Era! 🐙');
 });
 
 app.get('/health', (req, res) => {
