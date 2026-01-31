@@ -15,13 +15,32 @@ else
     echo -e "${GREEN}✅ Minikube is already running.${NC}"
 fi
 
-# --- 3. Start Jenkins (Docker) ---
-echo -e "${BLUE}🐳 Starting Jenkins Container...${NC}"
-docker start jenkins > /dev/null 2>&1
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✅ Jenkins started.${NC}"
+# --- 3. Start Jenkins (The Smart Way) ---
+echo -e "${BLUE}🐳 Checking Jenkins Container...${NC}"
+
+# Check if container exists (running or stopped)
+if [ "$(docker ps -aq -f name=jenkins)" ]; then
+    # It exists, just verify it's running
+    if [ "$(docker ps -q -f name=jenkins)" ]; then
+        echo -e "${GREEN}✅ Jenkins is already running.${NC}"
+    else
+        echo -e "${BLUE}🔄 Waking up existing Jenkins...${NC}"
+        docker start jenkins > /dev/null 2>&1
+        echo -e "${GREEN}✅ Jenkins started.${NC}"
+    fi
 else
-    echo -e "⚠️  Jenkins container not found or error starting."
+    # It does NOT exist (was cleaned), so CREATE it
+    echo -e "${BLUE}✨ Creating fresh Jenkins container (Data persisted in volume)...${NC}"
+    docker run -d \
+      -p 8080:8080 \
+      -p 50000:50000 \
+      --name jenkins \
+      -u root \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      -v jenkins_home:/var/jenkins_home \
+      my-jenkins-docker:v1 > /dev/null 2>&1
+    
+    echo -e "${GREEN}✅ Jenkins created and started.${NC}"
 fi
 
 # --- 4. Port Forwarding (The Magic Part) ---
@@ -35,8 +54,9 @@ PID_ARGO=$!
 kubectl port-forward svc/my-monitoring-grafana -n monitoring 3000:80 > /dev/null 2>&1 &
 PID_GRAF=$!
 
-# Prometheus Tunnel (Port 9090) <--- NEW!
+# Prometheus Tunnel (Port 9090)
 kubectl port-forward svc/my-monitoring-kube-prometh-prometheus -n monitoring 9090:9090 > /dev/null 2>&1 &
+PID_PROM=$!
 
 # Node App Tunnel (Port 3001)
 kubectl port-forward svc/node-app-service 3001:80 > /dev/null 2>&1 &
