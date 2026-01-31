@@ -1,13 +1,18 @@
-# Makefile
+.PHONY: up down clean
 
-.PHONY: up down
-
-# "make up" starts the environment
+# Start the environment
 up:
 	@chmod +x scripts/startup.sh
 	@./scripts/startup.sh
 
-# "make down" is a placeholder if you ever want to add a stop script later
+# Stop the Minikube VM to save RAM
 down:
-	@echo "Stopping environment..."
-	# commands to stop minikube or kill ports could go here
+	@echo "🛑 Stopping Minikube..."
+	@minikube stop
+	@echo "✅ Environment stopped (RAM freed)."
+
+# Delete the cluster entirely (Factory Reset)
+clean:
+	@echo "🧹 Deleting Minikube cluster..."
+	@minikube delete
+	@echo "✨ Cluster deleted. Run 'make up' to start fresh."
